@@ -1,0 +1,12 @@
+{
+  "apps": [
+    {
+      "name": "MixerBot",
+      "script": "./bot.js",
+      "args": "--color",
+      "watch": true,
+      "out_file": "/dev/null",
+      "error_file": "/dev/null"
+    }
+  ]
+}
