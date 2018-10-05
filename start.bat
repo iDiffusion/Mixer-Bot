@@ -1,5 +1,5 @@
 @echo off
-title Twitch Bot : Twitch Bot
+title Mixer Bot : Stream Bot
 color 0c
 node bot.js
 pause
