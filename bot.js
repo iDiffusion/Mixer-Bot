@@ -2,6 +2,7 @@ const Mixer = require('@mixer/client-node');
 const ws = require('ws');
 const config = require('./config.json');
 const team = require('./team.json');
+const cmds = require('./commands.json');
 
 var userInfo;
 var joinQueue = [];
@@ -50,6 +51,13 @@ function UserData(data) {
   this.user_roles = data.user_roles;
 }
 
+function getCommand(cmdName) {
+  let commands = cmds.cmds.filter(cmd => {
+    return cmd.alias.filter(p => p == cmdName).length > 0;
+  });
+  return commands[0];
+}
+
 /**
  * Creates a Mixer chat socket and sets up listeners to various chat events.
  * @param {number} userId The user to authenticate as
@@ -80,69 +88,58 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
     let args = formatMsg(data).trim().split(" ");
     if (config.debug) console.log(args);
     if (!args[0].startsWith(config.prefix)) return;
-    switch (args[0].toLowerCase().substring(1)) {
-      case 'ping':
-        socket.call('whisper', [data.user_name, `PONG!`]);
+
+    var cmd = getCommand(args[0]);
+    if (!cmd) return;
+    if (cmd.delete) socket.call('deleteMessage', [data.id])
+    if (cmd.enable == false) return;
+
+    switch (getCommand(args[0].toLowerCase().substring(1))) {
+      case 'audience':
+        let newaud = args.slice(1).join(" ");
+        //TODO set channel audience to variable
+        if (cmd.whisper) {
+          socket.call('whisper', [data.user_name, `The new channel audience has been set to${newaud}}.`]);
+        } else {
+          socket.call('msg', [`The new channel audience has been set to${newaud}}.`]);
+        }
         break;
 
-      case 'commands':
-      case 'cmds':
-        cmds = cmds.filter(cmd => {
-          return cmd.enable == true && cmd.permission.filter(p => p == "Everyone").length > 0);
-        }).join(", ");
-        socket.call('msg', [`The list of commands is: ${cmds}. Please use \"${config.prefix}\" as the prefix.`]);
-        break;
-
-      case 'rules':
-      case 'rule':
-        socket.call('msg', [`The list of rules is currently unavailable, please try again later.`]);
-        break;
-
-      case 'say':
-        //TODO limit to mods only
-        socket.call('deleteMessage', [data.id]);
-        socket.call('msg', [args.slice(1).join(" ")]);
-        console.log(`${data.user_name} has told me to say \"${args.slice(1).join(" ")}\"`);
-        break;
-
-      /* Moderation commands for mods*/
+        case 'authkey':
+          if(args[1] && args[1].toLowerCase().equals("-n")){
+            //TODO create new authKey
+          }
+          else {
+            //TODO obtain current authKey
+          }
+          if()
       case 'clear':
         socket.call('clearMessages', []);
         console.log(`${data.user_name} cleared messages from chat.`);
         break;
 
-      /* Fun commands for audience */
+      case 'cmds':
+        let commands = cmds.cmds.filter(cmmd => {
+          return cmmd.enable == true && cmmd.permission.filter(p => p == "Everyone").length > 0;
+        });
+        let str = [];
+        commands.map(cmmd => str.push(config.prefix + cmmd.name));
+        if (cmd.whisper) {
+          socket.call('whisper', [data.user_name, `The list of commands is: ${str.join(", ")}.`]);
+        } else {
+          socket.call('msg', [`The list of commands is: ${str.join(", ")}.`]);
+        }
+        break;
+
       case 'dab':
         socket.call('deleteMessage', [data.id]);
         socket.call('msg', [`DAB HYPE`]);
         break;
 
-      case 'yeet':
-        socket.call('deleteMessage', [data.id]);
-        socket.call('msg', [`YEET HYPE`]);
-        break;
-
-      /* Player Join Queue Commands*/
       case 'gt':
         team.team.map(mem => {
-          socket.call('msg', [mem.username + "\'s xbox gt is \"" + mem.gamertag.xbox + "\"."]);
+          socket.call('msg', [`${mem.username}\'s xbox gt is \"${mem.gamertag.xbox}\".`]);
         });
-        break;
-
-      case 'joinrule':
-      case 'joinrules':
-        socket.call('deleteMessage', [data.id]);
-        if(args.length >= 3 && args[1].toLowerCase().trim().equals("-a")){
-          let newRule = args.slice(2).join(" ");
-          //TODO Add rule to list of join rules
-        }
-        else if(args.length >= 3 && args[1].toLowerCase().trim().equals("-r")){
-          let num = args[2];
-          //TODO remove rule from list of join rules
-        }
-        else {
-          socket.call('whisper', [data.user_name, "The join rules are: " + config.joinrules.join(", ") + "."]);
-        }
         break;
 
       case 'join':
@@ -159,6 +156,31 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         }
         break;
 
+      case 'joinrules':
+        socket.call('deleteMessage', [data.id]);
+        if (args.length >= 3 && args[1].toLowerCase().trim().equals("-a")) {
+          let newRule = args.slice(2).join(" ");
+          //TODO Add rule to list of join rules
+        } else if (args.length >= 3 && args[1].toLowerCase().trim().equals("-r")) {
+          let num = args[2];
+          //TODO remove rule from list of join rules
+        } else {
+          if (cmd.whisper) {
+            socket.call('whisper', [data.user_name, `The join rules are: ${config.joinrules.join(", ")}.`]);
+          } else {
+            socket.call('msg', [`The join rules are: ${config.joinrules.join(", ")}.`]);
+          }
+        }
+        break;
+
+      case 'ping':
+        if (cmd.whisper) {
+          socket.call('whisper', [data.user_name, `PONG!`]);
+        } else {
+          socket.call('msg', [`@${data.user_name} PONG!`]);
+        }
+        break;
+
       case 'queue':
         let num = 0;
         let users = [];
@@ -166,8 +188,29 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
           if (num++ < 5)
             users.push(mem.user_name);
         });
-        socket.call('msg', ["The join queue is: " + users.join(", ") + "."]);
-      }
+        if (cmd.whisper) {
+          socket.call('whisper', [data.user_name, `The join queue is: ${users.join(", ")}.`]);
+        } else {
+          socket.call('msg', [`The join queue is: ${users.join(", ")}.`]);
+        }
+        break;
+
+      case 'rules':
+        socket.call('msg', [`The list of rules is currently unavailable, please try again later.`]);
+        break;
+
+      case 'say':
+        //TODO limit to mods only
+        socket.call('deleteMessage', [data.id]);
+        socket.call('msg', [args.slice(1).join(" ")]);
+        console.log(`${data.user_name} has told me to say \"${args.slice(1).join(" ")}\"`);
+        break;
+
+      case 'yeet':
+        socket.call('deleteMessage', [data.id]);
+        socket.call('msg', [`YEET HYPE`]);
+        break;
+    }
   });
 
   // Handle errors
