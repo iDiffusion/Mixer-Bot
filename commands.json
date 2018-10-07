@@ -1,0 +1,124 @@
+{
+  "cmds": [{
+      "name": "clear",
+      "alias": ["clear"],
+      "description": "Clears the channels's chat of all messages.",
+      "permission": ["Mod"],
+      "category": "Moderation",
+      "cooldown": 5,
+      "format": "clear",
+      "example": "clear",
+      "enabled": true
+      }, {
+      "name": "cmds",
+      "alias": ["cmds", "commands"],
+      "description": "Shows the current commands avaiable to the user.",
+      "permission": ["Everyone"],
+      "category": "Basic",
+      "cooldown": 0,
+      "format": "cmds",
+      "exmaple": "cmds",
+      "enabled": true
+    }, {
+      "name": "dab",
+      "alias": ["dab", "dabs"],
+      "description": "Print dabs in chat for the user.",
+      "permission": ["Everyone"],
+      "category": "Basic",
+      "cooldown": 5,
+      "format": "dab",
+      "example": "dab",
+      "enabled": true
+    }, {
+      "name": "gamertag",
+      "alias":["gt", "gamertag"],
+      "description": "Print out the gamertag of the users currently in the costream",
+      "permission": ["Everyone"],
+      "category": "Basic",
+      "cooldown": 5,
+      "format": "gt",
+      "example": "gt",
+      "enable": true
+    }, {
+      "name": "join",
+      "alias": ["join", "joingame"],
+      "description": "Allows user to apply to join the game the stremer is currently playing",
+      "permission": ["Follower"],
+      "category": "Queue",
+      "cooldown": 0,
+      "format": "join",
+      "example": "join",
+      "enable": true
+    }, {
+      "name": "joinqueue",
+      "alias": ["joinqueue", "queue"],
+      "description": "Shows the current queue of user wanting to play a game.",
+      "permission": ["Everyone"],
+      "category": "Queue",
+      "cooldown": 15,
+      "format": "joinqueue",
+      "example": "joinqueue",
+      "enable": true
+    }, {
+      "name": "joinrules",
+      "alias": ["joinrules"],
+      "description": "Shows the lsit of rules to join the streamers game",
+      "permission": ["Everyone"],
+      "category": "Queue",
+      "cooldown": 0,
+      "format": "joinrules [flag] [option]",
+      "example": "joinrules",
+      "enable": true
+    }, {
+      "name": "ping",
+      "alias": ["ping"],
+      "description": "Pings the bot to test if the bot is online and its signal strength.",
+      "permission": ["Everyone"],
+      "category": "Basic",
+      "cooldown": 15,
+      "format": "ping",
+      "example": "ping",
+      "enabled": true
+    }, {
+      "name": "rules",
+      "alias": ["rules", "rule"],
+      "description": "Print out a list of rules for the costream",
+      "permission": ["Everyone"],
+      "category": "Basic",
+      "cooldown": 0,
+      "format": "rules",
+      "example": "rules",
+      "enabled": true
+    }, {
+      "name": "say",
+      "alias": ["say"],
+      "description": "Shows the current commands avaiable to the user",
+      "permission": ["Mod"],
+      "category": "Basic",
+      "cooldown": 0,
+      "format": "say [message]",
+      "example": "say Hi",
+      "enabled": true
+    }, {
+      "name": "twitter",
+      "alias": ["twitter", "tweet"],
+      "description": "Prints out the twitter of all the users in the costream",
+      "permission": ["Everyone"],
+      "category": "Basic",
+      "cooldown": 15,
+      "format": "twitter",
+      "example": "twitter",
+      "enabled": true
+    }, {
+      "name": "yeet",
+      "alias": ["yeet"],
+      "description": "Print yeets in the chat for the users",
+      "permision": ["Everyone"],
+      "category": "Basic",
+      "colldwn": 15,
+      "format": "yeet",
+      "example": "yeet",
+      "enabled": true
+    }
+  ]
+}
