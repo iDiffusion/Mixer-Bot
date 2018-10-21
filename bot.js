@@ -6,7 +6,7 @@ const cmds = require('./commands.json');
 
 var userInfo;
 var joinQueue = [];
-var temp;
+var setup = [];
 
 const client = new Mixer.Client(new Mixer.DefaultRequestRunner());
 
@@ -50,6 +50,7 @@ function UserData(data) {
   this.user_name = data.user_name;
   this.user_id = data.user_id;
   this.user_roles = data.user_roles;
+  this.channel_id = data.channel;
 }
 
 function getCommand(cmdName) {
@@ -73,13 +74,13 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
 
   // Greet a joined user
   socket.on('UserJoin', data => {
-    if(data.username == userInfo.username) return;
+    if (data.username == userInfo.username) return;
     team.team.map(mem => {
       if (mem.social.mixer && mem.social.mixer != data.username) {
         socket.call('whisper', [mem.social.mixer, `${data.username} has joined the chat!`]);
       }
     });
-    socket.call('whisper', [data.username, "Welcome Back to the Stream!"]);
+    // socket.call('whisper', [data.username, "Welcome Back to the Stream!"]);
     console.log(`${data.username} has joined the chat!`);
     if (config.debug) {
       console.log(data);
@@ -94,31 +95,34 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
       console.log(data);
     }
     //Commands
-    let args = formatMsg(data).trim().split(" ");
+    let args = formatMsg(data).trim().replace(/  +/g, ' ').split(" ");
     if (config.debug) console.log(args);
     if (!args[0].startsWith(config.prefix)) return;
 
     var cmd = getCommand(args[0].slice(1));
     if (!cmd) return;
-    if (cmd.delete) socket.call('deleteMessage', [data.id]);
-    if (!cmd.enable) return;
+    if (cmd.delete) socket.call('deleteMessage', [data.id]).catch(console.error);
+    //if (!cmd.enable) return;
     switch (cmd.name) {
       case 'authkey':
         if (data.user_roles.filter(rol => rol == 'Owner').length == 0) break;
         if (args[1] && args[1].toLowerCase().trim() == "-n") {
-          //TODO create new authKey
+          // TODO create new authKey
           console.log(`${data.user_name} has renewed the Oauth Key!`);
         } else {
-          //TODO obtain current authKey
+          // TODO obtain current authKey
         }
         break;
 
       case 'ban':
         if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) break;
-        if (args.length > 2) {
-          //TODO ban user that was specified
-          let message = `@${args[1]} was banned by @${data.user_name} for the following reason: \"${args.slice(2).join(" ")}\".`;
-          socket.call('whisper', [userInfo.username, message]);
+        if (args.length >= 3) {
+          let user = args[1].replace(/@/g, '');
+          // TODO check if user exist
+          // TODO ban user that was specified
+          let reason = args.slice(2).join(" ");
+          let message = `@${user} was banned by @${data.user_name} for the following reason: \"${reason}\".`;
+          socket.call('whisper', [config.host, message]);
           console.log(message);
         } else {
           socket.call('whisper', [data.user_name, `The correct format for the command \"${cmd.name}\" is \'${cmd.format}\".`]);
@@ -127,40 +131,44 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
 
       case 'blacklist':
         if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) break;
-        var message;
-        if (args.length > 2 && args[1].trim().toLowerCase() == "-a") {
+        if (args.length >= 3 && args[1].trim().toLowerCase() == "-a") {
+          //TODO make sure that the user exist
           //TODO add user that was specified to blacklist
-          socket.call('whisper', [userInfo.user_name, `@${args[2]} was blacklisted by @${data.user_name}.`]);
-          message = "You have been banned from using the bot commands until further notice";
-          if (!cmd.whipser) socket.call('msg', [`@${args[2]}, ${message}`]);
-          else socket.call('whisper', [args[2].replace(/@/g, ''), message]);
-          console.log(`@${args[2]} was blacklisted by @${data.user_name}.`);
-        } else if (args.length > 2 && args[1].trim().toLowerCase() == "-r") {
+          let user = args[2].replace(/@/g, '');
+          let message = "You have been banned from using the bot commands until further notice.";
+          if (!cmd.whipser) socket.call('msg', [`@${user}, ${message}`]);
+          else socket.call('whisper', [user, message]);
+          message = `@${user} was blacklisted by @${data.user_name}.`;
+          socket.call('whisper', [config.host, message]);
+          console.log(message);
+        } else if (args.length >= 3 && args[1].trim().toLowerCase() == "-r") {
+          //TODO make sure that the user exist
           //TODO remove user that was specified from blacklist
-          socket.call('whisper', [userInfo.user_name, `@${args[1]} was unblacklisted by @${data.user_id}.`]);
-          message = "You are now able to use the bot.";
-          if (!cmd.whipser) socket.call('msg', [`@${args[2]}, ${message}`]);
-          else socket.call('whisper', [args[2].replace(/@/g, ''), message]);
-          console.log(`@${args[2]} was unblacklisted by @${data.user_id}.`);
+          let user = args[2].replace(/@/g, '');
+          let message = "You are now able to use the bot.";
+          if (!cmd.whipser) socket.call('msg', [`@${user}, ${message}`]);
+          else socket.call('whisper', [user, message]);
+          message = `@${user} was unblacklisted by @${data.user_name}.`;
+          socket.call('whisper', [config.host, message]);
+          console.log(message);
+        } else if (args.length == 1) {
+          //TODO Whisper the blacklist to the host and post it to the console
         } else {
-          message = `The correct format for the command \"${cmd.name}\" is \'${cmd.format}\".`;
-          if (!cmd.whipser) socket.call('msg', [message]);
-          else socket.call('whisper', [data.user_name, message]);
+          socket.call('whisper', [data.user_name, `The correct format for the command \"${cmd.name}\" is \'${cmd.format}\".`]);
         }
         break;
 
       case 'clear':
         if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) break;
-        socket.call('clearMessages', []);
+        socket.call('clearMessages', []).catch(console.error);
         console.log(`${data.user_name} cleared messages from chat.`);
         break;
 
       case 'cmds':
         let str = [];
-        let commands = cmds.cmds.filter(cmmd => {
+        cmds.cmds.filter(cmmd => {
           return cmmd.enable == true && cmmd.permission.filter(p => p == "Everyone" || p == "Follower").length > 0;
-        });
-        commands.map(cmmd => str.push(config.prefix + cmmd.name));
+        }).map(cmmd => str.push(config.prefix + cmmd.name));
         if (cmd.whisper) {
           socket.call('whisper', [data.user_name, `The list of commands is: ${str.join(", ")}.`]);
         } else {
@@ -173,19 +181,20 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         break;
 
       case 'discord':
-        var link = 'DISCORDLINKGOESHERE';
         if (cmd.whisper) {
-          socket.call('whisper', [data.username, `The discord link is ${link}`]);
+          socket.call('whisper', [data.username, `The discord link is ${config.discord}`]);
         } else {
-          socket.call('msg', [`The discord link is ${link}`]);
+          socket.call('msg', [`The discord link is ${config.discord}`]);
         }
         break;
 
       case 'followme':
-        //TODO chek if user follows streamers
-        var channelID;
-        client.request('GET', `users/${data.user_id}`).then(response => temp = response.body);
-        client.request('POST', `channels/${temp.channel.id}/follow`).then(response => console.log(response.body));
+        //TODO check if user follows streamers
+        client.request('GET', `users/${data.user_id}`)
+          .then(response => {
+            console.log(response.body)
+            client.request('POST', `channels/${response.body.channel.id}/follow`).then(response2 => console.log(response2.body));
+          });
         break;
 
       case 'gucci':
@@ -194,7 +203,7 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
 
       case 'gt':
         team.team.map(mem => {
-          if (mem.gamertag.xbox)
+          if (mem.gamertag.xbox && mem.enabled)
             socket.call('msg', [`${mem.user_name}\'s xbox gt is \"${mem.gamertag.xbox}\".`]);
         });
         break;
@@ -203,25 +212,32 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) break;
         if (args[1] && args[1].trim().toLowerCase() == 'team') {
           //TODO host members on the team
+        } else if (args[1]) {
+          let user = args[1].replace(/@/g, '');
+          //TODO check if the user is valid
+          //TODO host target's channel
         } else {
-          //TODO host targets stream
+          //TODO stop hosting current channel
         }
         break;
 
       case 'join':
         //TODO check if user follows streamers
-        let user = new UserData(data);
-        var message;
-        if (joinQueue.filter(u => u.username == user.username).length > 0) {
-          messsage = "You have already been added to the queue, please make sure you read the rules (use !rules to view the rules) and requirements (use !joinrules to view the requirements) and enjoy the stream!";
+        let player = new UserData(data);
+        if (joinQueue.filter(u => u.user_name == player.user_name).length > 0) {
+          let message = "You have already been added to the queue, please make sure you read the rules (use !rules to view the rules) and requirements (use !joinrules to view the requirements) and enjoy the stream!";
+          if (cmd.whisper) socket.call('whisper', [data.user_name, message]);
+          else socket.call('msg', [`${data.user_name}, ${message}`]);
         } else {
-          joinQueue.push(user);
+          joinQueue.push(player);
+          let message = `${data.user_name} has joined the queue!`
+          socket.call('whisper', [config.host, message]);
+          console.log(message);
           message = "You have now joined the queue, please make sure you meet the requirements (use !joinrules to view them) and enjoy the stream!";
-          socket.call('whisper', ['Its_Diffusion', `${data.user_name} has joined the queue!`]);
-          console.log(`${data.user_name} has joined the queue.`);
+          if (cmd.whisper) socket.call('whisper', [data.user_name, message]);
+          else socket.call('msg', [`${data.user_name}, ${message}`]);
         }
-        if (cmd.whisper) socket.call('whisper', [data.user_name, message]);
-        else socket.call('msg', [`${data.user_name}, ${message}`]);
+
         break;
 
       case 'joinrules':
@@ -241,21 +257,67 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         break;
 
       case 'parden':
+        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) break;
         if (args[1]) {
-          socket.call('timeout', [args[1].replace(/@/g, ''), 'clear']);
-          socket.call('whisper', [args[1].replace(/@/g, ''), 'You are now able to talk in chat.']);
-          console.log(`${data.user_name} has enabled ${args[1]} to chat.`);
+          let user = args[1].replace(/@/g, '');
+          //TODO check if username is valid
+          socket.call('timeout', [user, 'clear']).cathc(console.error);
+          socket.call('whisper', [user, 'You are now able to talk in chat.']);
+          console.log(`${data.user_name} has enabled @${user} to chat.`);
+        } else {
+          socket.call('whisper', [data.user_name, `The correct format for the command \"${cmd.name}\" is \'${cmd.format}\".`]);
+        }
+        break;
+
+      case 'permit':
+        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) break;
+        if (args[1]) {
+          let user = args[1].replace(/@/g, '');
+          //TODO check if username is valid
+          //TODO only allow followers to be permitted
+          //TODO permit user to post without filtering
+          socket.call('whisper', [user, 'You have temporarily been allowed to chat wilhout filter.']);
+          console.log(`${data.user_name} has allowed ${user} to chat without filter.`);
         } else {
           socket.call('whisper', [data.user_name, `The correct format for the command \"${cmd.name}\" is \'${cmd.format}\".`]);
         }
         break;
 
       case 'ping':
-        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owener').length == 0) break;
+        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) break;
         if (cmd.whisper) {
           socket.call('whisper', [data.user_name, `PONG!`]);
         } else {
           socket.call('msg', [`@${data.user_name} PONG!`]);
+        }
+        break;
+
+      case 'points':
+        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) {
+          //TODO display user points
+          break;
+        }
+        if (args.length >= 4 && args[2].trim().toLowerCase() == "-a") {
+          //TODO check for valid arguements
+          //TODO add points to a specific user
+          let user = args[1].replace(/@/g, '');
+          socket.call('whisper', [config.host, `${args[3]} points have been given to @${user} by @${data.user_name}.`]);
+          console.log(`${args[3]} points have been given to @${user} by @${data.user_name}.`);
+        } else if (args.length >= 4 && args[2].trim().toLowerCase() == "-r") {
+          //TODO check for valid arguements
+          //TODO remove points from a specific user
+          let user = args[1].replace(/@/g, '');
+          socket.call('whisper', [userInfo.user_name, `${args[3]} points have been removed from @${user} by @${data.user_name}.`]);
+          console.log(`${args[3]} points have been removed from @${user} by @${data.user_name}.`);
+        } else if (args.length == 2) {
+          //TODO print out the list of points of a specific user
+          let user = args[1].replace(/@/g, '');
+        } else if (args.length == 1) {
+          //TODO print out the list of points of the caller
+        } else {
+          let message = `The correct format for the command \"${cmd.name}\" is \'${cmd.format}\".`;
+          if (!cmd.whipser) socket.call('msg', [message]);
+          else socket.call('whisper', [data.user_name, message]);
         }
         break;
 
@@ -264,18 +326,20 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         if (joinQueue.length > 0) {
           let player = joinQueue[0];
           joinQueue.shift();
-          socket.call('whisper', [data.user_name, `The next person is queue is @${player.user_name} .`]);
+          let message = `The next person in queue is @${player.user_name} .`;
+          socket.call('whisper', [data.user_name, message]);
+          if (data.user_name != config.host) socket.call('whisper', [config.host, message]);
           console.log(`The next person is queue is @${player.user_name} .`);
         } else {
           socket.call('whisper', [data.user_name, `There is currently no one in the queue.`]);
         }
         break;
 
-        break;
       case 'purge':
         if (args[1]) {
-          socket.call('purge', [args[1].replace(/@/g, '')]);
-          console.log(`${data.user_name} has purged ${args[1]} messages from chat.`);
+          let user = args[1].replace(/@/g, '');
+          socket.call('purge', [user]).catch(console.error);
+          console.log(`${data.user_name} has purged @${user} messages from chat.`);
         } else {
           socket.call('whisper', [data.user_name, `The correct format for the command \"${cmd.name}\" is \'${cmd.format}\".`]);
         }
@@ -289,31 +353,64 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
             if (num++ < 5)
               users.push(mem.user_name);
           });
+          let message = `The join queue contains: ${users.join(", ")} .`;
           if (cmd.whisper) {
-            socket.call('whisper', [data.user_name, `The join queue contains: ${users.join(", ")}.`]);
+            socket.call('whisper', [data.user_name, message]);
           } else {
-            socket.call('msg', [`The join queue contains: ${users.join(", ")}.`]);
+            socket.call('msg', [message]);
           }
         } else {
+          let message = `The join queue is: EMPTY.`;
           if (cmd.whisper) {
-            socket.call('whisper', [data.user_name, `The join queue is: Empty}.`]);
+            socket.call('whisper', [data.user_name, message]);
           } else {
-            socket.call('msg', [`The join queue is: Empty.`]);
+            socket.call('msg', [message]);
           }
+        }
+        break;
+
+      case 'rank':
+        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0 || args.length == 1) {
+          //TODO calculate and print the rank of the calling user
+        } else {
+          let user = args[1].replace(/@/g, '');
+          //TODO calculate and print the rank of the specified user
         }
         break;
 
       case 'rip':
         if (args.length > 1) {
-          let user = args[1].replace(/@/g, "");
+          let user = args.slice(1).join(" ").replace(/@/g, "");
           socket.call('msg', [`Rest in piece ${user}, you will forever be missed.`]);
         } else {
           socket.call('msg', [`Rest in piece, you will forever be missed.`]);
         }
         break;
 
+      case 'roulette':
+        if (args[1] && args[1].trim.toLowerCase() == "all") {
+          let user = data.user_name;
+          //TODO wager all of the calling users points away
+        } else if (args[1] && !isNaN(+args[1])) {
+          let user = data.user_name;
+          let points = +args[1];
+          //TODO wager a certain number of users points away
+        } else {
+          let message = `The correct format for the command \"${cmd.name}\" is \'${cmd.format}\".`;
+          if (!cmd.whipser) socket.call('msg', [message]);
+          else socket.call('whisper', [data.user_name, message]);
+        }
+        break;
+
       case 'rules':
-        socket.call('msg', [`The list of rules is currently unavailable, please try again later.`]);
+        {
+          let message = `The chat rules are : ${config.chatrules.join(", ")}.`;
+          if (cmd.whisper) {
+            socket.call('msg', [message]);
+          } else {
+            socket.call('msg', [data.user_name, message]);
+          }
+        }
         break;
 
       case 'say':
@@ -323,11 +420,13 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         break;
 
       case 'server':
-        var message = 'Server name = \'[US] Prisolis Gaming\', Session filter = \'Unofficial PC Session\', Map = \'Ragnarok\', Password = message diffusion for password.'
-        if (cmd.whisper) {
-          socket.call('msg', [message]);
-        } else {
-          socket.call('msg', [message]);
+        {
+          let message = 'Server name = \'[US] Prisolis Gaming\', Session filter = \'Unofficial PC Session\', Map = \'Ragnarok\', Password = message diffusion for password.'
+          if (cmd.whisper) {
+            socket.call('msg', [message]);
+          } else {
+            socket.call('msg', [message]);
+          }
         }
         break;
 
@@ -335,12 +434,12 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) break;
         if (args.length > 2) {
           socket.call('timeout', [args[1].replace(/@/g, ''), args[3]]);
-          message = `You have been timed out for ${args[2]}.`;
+          let message = `You have been timed out for ${args[2]}.`;
           if (!cmd.whipser) socket.call('msg', [`@${args[1].replace(/@/g, '')}, ${message}`]);
           else socket.call('whisper', [args[1].replace(/@/g, ''), message]);
           console.log(`${args[1].replace(/@/g, '')} has been timed out for ${args[3]} seconds by ${data.user_name} because ${args.slice(4).join(" ")}`);
         } else {
-          message = `The correct format for the command \"${cmd.name}\" is \'${cmd.format}\".`;
+          let message = `The correct format for the command \"${cmd.name}\" is \'${cmd.format}\".`;
           if (!cmd.whipser) socket.call('msg', [message]);
           else socket.call('whisper', [data.user_name, message]);
         }
@@ -349,35 +448,37 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
       case 'twitter':
         team.team.map(mem => {
           if (mem.social.twitter)
-            socket.call('msg', [`${mem.username}\'s twitter is \"${mem.social.twitter}\".`]);
+            socket.call('msg', [`${mem.user_name}\'s twitter is \"${mem.social.twitter}\".`]);
         });
         break;
 
       case 'test':
-        client.request('GET', `users/${data.user_id}`).then(response => console.log(response.body));
-        client.request('GET', `users/${data.user_id}`).then(response => console.log(response.body.channel.id));
-        client.request('GET', `users/${data.user_id}`).then(response => {
-          console.log(response.body)
-        });
-        //client.request('GET', 'users/36376166').then(response => console.log(response.body.channel.id));
+        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) break;
+        if (args.length >= 2) {
+          console.log(+args[1]);
+        }
         break;
 
       case 'warn':
         if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) break;
-        if (args.length > 3) {
+        if (args.length >= 3) {
+          let user = args[1].replace(/@/g, '');
+          let message = `You have been warned by a Mod because \"${args.slice(2).join(' ')}\".`;
           if (!cmd.whisper) {
-            socket.call('msg', [`You have been warned by a Mod because \"${args.slice(3).join(' ')}\".`]);
+            socket.call('msg', [`@${user}, ${message}`]);
           } else {
-            socket.call('whisper', [args[1].replace(/@/g, ''), `You have been warned by a Mod because \"${args.slice(3).join(' ')}\".`]);
+            socket.call('whisper', [user, message]);
           }
-          socket.call('whisper', [userInfo.username, `${args[1]} has been warned by ${data.user_name} for the following reason: ${args.slice(3).join(" ")}`]);
-          console.log(`${args[1]} has been warned by ${data.user_name} for the following reason: ${args.slice(3).join(" ")}`);
+          message = `${args[1]} has been warned by ${data.user_name} for the following reason: ${args.slice(2).join(" ")}`;
+          socket.call('whisper', [userInfo.username, message]);
+          console.log(message);
         } else {
           socket.call('whisper', [data.user_name, `The correct format for the command \"${cmd.name}\" is \'${cmd.format}\".`]);
         }
         break;
 
       case 'winner':
+        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) break;
         socket.call('giveaway:start', []);
         break;
 

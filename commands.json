@@ -55,7 +55,7 @@
     "category": "Basic",
     "cooldown": 5,
     "format": "cmds",
-    "exmaple": "cmds",
+    "example": "cmds",
     "enable": true,
     "whisper": false,
     "delete": true
@@ -80,7 +80,7 @@
     "cooldown": 5,
     "format": "discord",
     "example": "discord",
-    "enable": null,
+    "enable": true,
     "whisper": false,
     "delete": true
   }, {
@@ -113,7 +113,7 @@
     "description": "Print gucci in the chat for the users.",
     "permission": ["Follower"],
     "category": "Basic",
-    "colldwn": 0,
+    "cooldown": 0,
     "format": "gucci",
     "example": "gucci",
     "enable": true,
@@ -127,7 +127,7 @@
     "category": "Basic",
     "cooldown": 5,
     "format": "cmds",
-    "exmaple": "cmds",
+    "example": "cmds",
     "enable": false,
     "whisper": false,
     "delete": true
@@ -140,7 +140,7 @@
     "cooldown": 0,
     "format": "host [user/team]",
     "example": "host @Pyro",
-    "enable": false,
+    "enable": null,
     "whisper": null,
     "delete": true
   }, {
@@ -201,7 +201,7 @@
     "format": "ping",
     "example": "ping",
     "enable": true,
-    "whisper": true,
+    "whisper": false,
     "delete": true
   }, {
     "name": "points",
@@ -210,7 +210,7 @@
     "permission": ["Everyone"],
     "category": "Basic",
     "cooldown": 0,
-    "format": "points [user]",
+    "format": "points [user] [flag] [amount]",
     "example": "points @pyro",
     "enable": false,
     "whisper": false,
@@ -236,7 +236,7 @@
     "cooldown": 0,
     "format": "points [user]",
     "example": "points @pyro",
-    "enable": true,
+    "enable": null,
     "whisper": null,
     "delete": true
   }, {
@@ -269,7 +269,7 @@
     "description": "Print rip in the chat for the users.",
     "permission": ["Follower"],
     "category": "Basic",
-    "colldwn": 0,
+    "cooldown": 0,
     "format": "rip [name]",
     "example": "rip Pyro",
     "enable": true,
@@ -285,7 +285,7 @@
     "format": "rules [flag] [option]",
     "example": "rules",
     "enable": true,
-    "whisper": false,
+    "whisper": true,
     "delete": true
   }, {
     "name": "roulette",
@@ -334,6 +334,18 @@
     "example": "set follow Thanks for the follow!",
     "enable": false,
     "whisper": true,
+    "delete": true
+  }, {
+    "name": "shoutout",
+    "alias": ["shoutout", "so"],
+    "description": "Print users stream info to the chat for the users.",
+    "permission": ["Mod"],
+    "category": "Basic",
+    "cooldown": 0,
+    "format": "so [name]",
+    "example": "so Pyro",
+    "enable": false,
+    "whisper": null,
     "delete": true
   }, {
     "name": "stop",
@@ -416,7 +428,7 @@
     "cooldown": 5,
     "format": "twitter",
     "example": "twitter",
-    "enable": false,
+    "enable": true,
     "whisper": false,
     "delete": true
   }, {
@@ -428,7 +440,7 @@
     "cooldown": 15,
     "format": "uptime [user]",
     "example": "uptime",
-    "enable": true,
+    "enable": false,
     "whisper": false,
     "delete": false
   }, {
@@ -473,7 +485,7 @@
     "description": "Get the name of random viewer in chat.",
     "permission": ["Mod"],
     "category": "Moderation",
-    "colldwn": 15,
+    "cooldown": 15,
     "format": "winner",
     "example": "winner",
     "enable": null,
@@ -485,7 +497,7 @@
     "description": "Print yeets in the chat for the users.",
     "permission": ["Follower"],
     "category": "Basic",
-    "colldwn": 0,
+    "cooldown": 0,
     "format": "yeet",
     "example": "yeet",
     "enable": true,
