@@ -76,7 +76,7 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
   socket.on('UserJoin', data => {
     if (data.username == userInfo.username) return;
     team.team.map(mem => {
-      if (mem.social.mixer && mem.social.mixer != data.username) {
+      if (mem.social.mixer) {
         socket.call('whisper', [mem.social.mixer, `${data.username} has joined the chat!`]);
       }
     });
@@ -102,7 +102,7 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
     var cmd = getCommand(args[0].slice(1));
     if (!cmd) return;
     if (cmd.delete) socket.call('deleteMessage', [data.id]).catch(console.error);
-    //if (!cmd.enable) return;
+    if (!cmd.enable) return;
     switch (cmd.name) {
       case 'authkey':
         if (data.user_roles.filter(rol => rol == 'Owner').length == 0) break;
@@ -167,7 +167,7 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
       case 'cmds':
         let str = [];
         cmds.cmds.filter(cmmd => {
-          return cmmd.enable == true && cmmd.permission.filter(p => p == "Everyone" || p == "Follower").length > 0;
+          return cmmd.enable == true && cmmd.permission.filter(p => p == "Everyone"|| p == "User" || p == "Follower").length > 0;
         }).map(cmmd => str.push(config.prefix + cmmd.name));
         if (cmd.whisper) {
           socket.call('whisper', [data.user_name, `The list of commands is: ${str.join(", ")}.`]);
@@ -370,12 +370,16 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         break;
 
       case 'rank':
-        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0 || args.length == 1) {
+        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length > 0 || args.length == 1) {
           //TODO calculate and print the rank of the calling user
         } else {
           let user = args[1].replace(/@/g, '');
           //TODO calculate and print the rank of the specified user
         }
+        break;
+
+      case 'reee':
+      socket.call('msg', [`REEEEEEEEE`]);
         break;
 
       case 'rip':
@@ -432,12 +436,12 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
 
       case 'timeout':
         if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0) break;
-        if (args.length > 2) {
-          socket.call('timeout', [args[1].replace(/@/g, ''), args[3]]);
+        if (args.length > 2 && +args[2] != "NaN") {
+          socket.call('timeout', [args[1].replace(/@/g, ''), +args[2]]);
           let message = `You have been timed out for ${args[2]}.`;
           if (!cmd.whipser) socket.call('msg', [`@${args[1].replace(/@/g, '')}, ${message}`]);
           else socket.call('whisper', [args[1].replace(/@/g, ''), message]);
-          console.log(`${args[1].replace(/@/g, '')} has been timed out for ${args[3]} seconds by ${data.user_name} because ${args.slice(4).join(" ")}`);
+          console.log(`${args[1].replace(/@/g, '')} has been timed out for ${args[2]} seconds by ${data.user_name} because ${args.slice(4).join(" ")}`);
         } else {
           let message = `The correct format for the command \"${cmd.name}\" is \'${cmd.format}\".`;
           if (!cmd.whipser) socket.call('msg', [message]);
@@ -485,6 +489,8 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
       case 'yeet':
         socket.call('msg', [`YEET HYPE`]);
         break;
+
+      default:
 
     }
   });
