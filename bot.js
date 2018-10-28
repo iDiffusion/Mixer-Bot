@@ -231,7 +231,10 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         } else {
           joinQueue.push(player);
           let message = `${data.user_name} has joined the queue!`
-          socket.call('whisper', [config.host, message]);
+          team.team.map(mem => {
+            if (mem.social.mixer && mem.enabled)
+              socket.call('whisper', [mem.social.mixer, message]);
+          });
           console.log(message);
           message = "You have now joined the queue, please make sure you meet the requirements (use !joinrules to view them) and enjoy the stream!";
           if (cmd.whisper) socket.call('whisper', [data.user_name, message]);
@@ -327,9 +330,11 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
           let player = joinQueue[0];
           joinQueue.shift();
           let message = `The next person in queue is @${player.user_name} .`;
-          socket.call('whisper', [data.user_name, message]);
-          if (data.user_name != config.host) socket.call('whisper', [config.host, message]);
-          console.log(`The next person is queue is @${player.user_name} .`);
+          team.team.map(mem => {
+            if (mem.social.mixer && mem.enabled)
+              socket.call('whisper', [mem.social.mixer, message]);
+          });
+          console.log(message);
         } else {
           socket.call('whisper', [data.user_name, `There is currently no one in the queue.`]);
         }
@@ -347,13 +352,11 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
 
       case 'queue':
         if (joinQueue.length > 0) {
-          let num = 0;
           let users = [];
           joinQueue.map(mem => {
-            if (num++ < 5)
-              users.push(mem.user_name);
+            users.push(mem.user_name);
           });
-          let message = `The join queue contains: ${users.join(", ")} .`;
+          let message = `The join queue contains: ${users.join(", ")}.`;
           if (cmd.whisper) {
             socket.call('whisper', [data.user_name, message]);
           } else {
