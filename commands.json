@@ -60,6 +60,18 @@
     "whisper": false,
     "delete": true
   }, {
+    "name": "creator",
+    "alias": ["creator", "progarmmer"],
+    "description": "Shows the creator of the bot.",
+    "permission": ["User", "Follower", "Team", "Mod", "Owner"],
+    "category": "Basic",
+    "cooldown": 5,
+    "format": "cmds",
+    "example": "cmds",
+    "enable": true,
+    "whisper": false,
+    "delete": true
+  }, {
     "name": "dab",
     "alias": ["dab", "dabs"],
     "description": "Print dabs in chat for the user.",
@@ -108,6 +120,18 @@
     "whisper": true,
     "delete": false
   }, {
+    "name": "get",
+    "alias": ["get"],
+    "description": "Obtain and show a certain property of a user or channel",
+    "permission": ["Owner"],
+    "category": "Moderation",
+    "cooldown": 5,
+    "format": "get [property] [item]",
+    "example": "get id @pyro",
+    "enable": false,
+    "whisper": null,
+    "delete": true
+  },{
     "name": "gt",
     "alias": ["gt", "gamertag"],
     "description": "Print out the gamertag of the users currently in the costream.",
@@ -159,7 +183,7 @@
     "name": "howtojoin",
     "alias": ["howtojoin", "htj"],
     "description": "Post in chat how to join queue",
-    "permission": ["User", "Follower", "Mod", "Owner"],
+    "permission": ["User", "Follower", "Team", "Mod", "Owner"],
     "category": "Moderation",
     "cooldown": 0,
     "format": "howtojoin",
@@ -384,22 +408,34 @@
     "whisper": null,
     "delete": true
   }, {
+    "name": "status",
+    "alias": ["status", "stat"],
+    "description": "Display bot and stream status to chat.",
+    "permission": ["Mod", "Owner"],
+    "category": "Moderation",
+    "cooldown": 0,
+    "format": "status",
+    "example": "status",
+    "enable": true,
+    "whisper": true,
+    "delete": true
+  }, {
     "name": "team",
     "alias": ["team"],
     "description": "Display and modify team members.",
-    "permission": ["Mod", "Owner"],
+    "permission": ["Team", "Mod", "Owner"],
     "category": "Moderation",
     "cooldown": 0,
     "format": "team [flag] [value]",
     "example": "team -a @pyro",
-    "enable": false,
+    "enable": true,
     "whisper": true,
     "delete": true
   }, {
     "name": "test",
     "alias": ["test", "try"],
     "description": "Test automated message alerts for the channel.",
-    "permission": ["Mod", "Owner"],
+    "permission": [],
     "category": "Moderation",
     "cooldown": 0,
     "format": "test [alert]",
