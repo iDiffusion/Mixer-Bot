@@ -6,7 +6,7 @@ const cmds = require('./commands.json');
 
 var userInfo;
 var joinQueue = [];
-var setup = [];
+var openQueue = true;
 
 const client = new Mixer.Client(new Mixer.DefaultRequestRunner());
 
@@ -76,7 +76,7 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
   socket.on('UserJoin', data => {
     if (data.username == userInfo.username) return;
     team.team.map(mem => {
-      if (mem.social.mixer) {
+      if (mem.enabled && mem.social.mixer) {
         socket.call('whisper', [mem.social.mixer, `${data.username} has joined the chat!`]);
       }
     });
@@ -167,7 +167,7 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
       case 'cmds':
         let str = [];
         cmds.cmds.filter(cmmd => {
-          return cmmd.enable == true && cmmd.permission.filter(p => p == "Everyone"|| p == "User" || p == "Follower").length > 0;
+          return cmmd.enable == true && cmmd.permission.filter(p => p == "Everyone" || p == "User" || p == "Follower").length > 0;
         }).map(cmmd => str.push(config.prefix + cmmd.name));
         if (cmd.whisper) {
           socket.call('whisper', [data.user_name, `The list of commands is: ${str.join(", ")}.`]);
@@ -197,15 +197,22 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
           });
         break;
 
-      case 'gucci':
-        socket.call('msg', [`GUCCI HYPE`]);
+      case 'games':
+        team.team.map(mem => {
+          if (mem.enabled && mem.games && mem.games.length > 0)
+            socket.call('msg', [`${mem.social.mixer} likes to stream ${mem.games.join(", ")}.`]);
+        });
         break;
 
       case 'gt':
         team.team.map(mem => {
-          if (mem.gamertag.xbox && mem.enabled)
-            socket.call('msg', [`${mem.user_name}\'s xbox gt is \"${mem.gamertag.xbox}\".`]);
+          if (mem.enabled && mem.social.mixer && mem.gamertag.xbox)
+            socket.call('msg', [`${mem.social.mixer}\'s xbox gt is \"${mem.gamertag.xbox}\".`]);
         });
+        break;
+
+      case 'gucci':
+        socket.call('msg', [`GUCCI HYPE`]);
         break;
 
       case 'host':
@@ -221,6 +228,10 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         }
         break;
 
+      case 'howtojoin':
+        socket.call('msg', ["If anyone would like to join us in some games, please be sure to join the queue by typing !join in chat, read the rules by typing !joinrules and send one of us a message on xbox !gt"]);
+        break;
+
       case 'join':
         //TODO check if user follows streamers
         let player = new UserData(data);
@@ -228,11 +239,15 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
           let message = "You have already been added to the queue, please make sure you read the rules (use !rules to view the rules) and requirements (use !joinrules to view the requirements) and enjoy the stream!";
           if (cmd.whisper) socket.call('whisper', [data.user_name, message]);
           else socket.call('msg', [`${data.user_name}, ${message}`]);
+        } else if (!openQueue) {
+          let message = "I'm sorry, but the queue is closed at this time, please try again later.";
+          if (cmd.whisper) socket.call('whisper', [data.user_name, message]);
+          else socket.call('msg', [`${data.user_name}, ${message}`]);
         } else {
           joinQueue.push(player);
           let message = `${data.user_name} has joined the queue!`
           team.team.map(mem => {
-            if (mem.social.mixer && mem.enabled)
+            if (mem.enabled && mem.social.mixer)
               socket.call('whisper', [mem.social.mixer, message]);
           });
           console.log(message);
@@ -329,11 +344,15 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         if (joinQueue.length > 0) {
           let player = joinQueue[0];
           joinQueue.shift();
-          let message = `The next person in queue is @${player.user_name} .`;
-          team.team.map(mem => {
-            if (mem.social.mixer && mem.enabled)
-              socket.call('whisper', [mem.social.mixer, message]);
-          });
+          let message = `The next person in queue is @${player.user_name}!`;
+          if (cmd.whisper) {
+            team.team.map(mem => {
+              if (mem.social.mixer && mem.enabled)
+                socket.call('whisper', [mem.social.mixer, message]);
+            });
+          } else {
+            socket.call('msg', [message]);
+          }
           console.log(message);
         } else {
           socket.call('whisper', [data.user_name, `There is currently no one in the queue.`]);
@@ -351,29 +370,45 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         break;
 
       case 'queue':
-        if (joinQueue.length > 0) {
-          let users = [];
-          joinQueue.map(mem => {
-            users.push(mem.user_name);
+        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0 || args.length == 1) {
+          if (joinQueue.length > 0) {
+            let users = [];
+            joinQueue.map(mem => {
+              users.push(mem.user_name);
+            });
+            let message = `The join queue contains: ${users.join(", ")}.`;
+            if (cmd.whisper) {
+              socket.call('whisper', [data.user_name, message]);
+            } else {
+              socket.call('msg', [message]);
+            }
+          } else {
+            let message = `The join queue is: EMPTY.`;
+            if (cmd.whisper) {
+              socket.call('whisper', [data.user_name, message]);
+            } else {
+              socket.call('msg', [message]);
+            }
+          }
+        } else if (args[1].toLowerCase().includes("stop")) {
+          openQueue = false;
+          team.team.map(mem => {
+            if (mem.social.mixer && mem.enabled)
+              socket.call('whisper', [mem.social.mixer, `The queue has stopped taking players.`]);
           });
-          let message = `The join queue contains: ${users.join(", ")}.`;
-          if (cmd.whisper) {
-            socket.call('whisper', [data.user_name, message]);
-          } else {
-            socket.call('msg', [message]);
-          }
+          console.log(`${data.user_name} has stopped the queue.`);
         } else {
-          let message = `The join queue is: EMPTY.`;
-          if (cmd.whisper) {
-            socket.call('whisper', [data.user_name, message]);
-          } else {
-            socket.call('msg', [message]);
-          }
+          openQueue = true;
+          team.team.map(mem => {
+            if (mem.social.mixer && mem.enabled)
+              socket.call('whisper', [mem.social.mixer, `The queue has resumed taking players.`]);
+              console.log(`${data.user_name} has started the queue.`);
+          });
         }
         break;
 
       case 'rank':
-        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length > 0 || args.length == 1) {
+        if (data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0 || args.length == 1) {
           //TODO calculate and print the rank of the calling user
         } else {
           let user = args[1].replace(/@/g, '');
@@ -382,7 +417,7 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         break;
 
       case 'reee':
-      socket.call('msg', [`REEEEEEEEE`]);
+        socket.call('msg', [`REEEEEEEEE`]);
         break;
 
       case 'rip':
@@ -428,13 +463,17 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
 
       case 'server':
         {
-          let message = 'Server name = \'[US] Prisolis Gaming\', Session filter = \'Unofficial PC Session\', Map = \'Ragnarok\', Password = message diffusion for password.'
+          let message = 'ARK Server Name = \'[US] Prisolis Gaming\', Session Filter = \'Unofficial PC Session\', Map = \'Ragnarok\', Password = Message Diffusion for Password.'
           if (cmd.whisper) {
             socket.call('msg', [message]);
           } else {
             socket.call('msg', [message]);
           }
         }
+        break;
+
+      case 'status':
+
         break;
 
       case 'timeout':
@@ -454,7 +493,7 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
 
       case 'twitter':
         team.team.map(mem => {
-          if (mem.social.twitter)
+          if (mem.social.twitter && mem.enabled)
             socket.call('msg', [`${mem.user_name}\'s twitter is \"${mem.social.twitter}\".`]);
         });
         break;
