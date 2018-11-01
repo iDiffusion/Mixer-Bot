@@ -9,5 +9,6 @@
   "debug": BOOLEANWETHERONLYTESTING,
   "prefix": PREFIXFORALLCOMMANDS,
   "joinrules": [YOURRULESGOESHERE],
-  "chatrules": [YOURRULESGOESHERE]
+  "chatrules": [YOURRULESGOESHERE],
+  "discord": YOURDISCORDGOESHERE
 }
