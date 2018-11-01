@@ -1,9 +1,10 @@
 {
   "team":[{
-    "username" USERNAMEGOESHERE,
-    "id": IDGOESHERE,
-    "userID": IDGOESHERE,
+    "user_name" USERNAMEGOESHERE,
+    "user_id": IDGOESHERE,
+    "channel_id": IDGOESHERE,
     "social": {},
+    "link": {},
     "gamertag": {},
     "games" []
     }
