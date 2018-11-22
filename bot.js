@@ -4,6 +4,7 @@ const config = require('./config.json');
 const team = require('./team.json');
 const cmds = require('./commands.json');
 
+const joinID = 29519300;
 var userInfo;
 var joinQueue = [];
 var openQueue = true;
@@ -30,7 +31,7 @@ client.request('GET', 'users/current')
       console.log("REQUEST:");
       console.log(userInfo);
     }
-    return new Mixer.ChatService(client).join(29519300);
+    return new Mixer.ChatService(client).join(joinID);
   })
   .then(response => {
     const body = response.body;
@@ -38,7 +39,7 @@ client.request('GET', 'users/current')
       console.log("REQUEST:");
       console.log(userInfo);
     }
-    return createChatSocket(userInfo.id, 29519300, body.endpoints, body.authkey);
+    return createChatSocket(userInfo.id, joinID, body.endpoints, body.authkey);
   })
   .catch(error => {
     console.error('Something went wrong.');
@@ -67,15 +68,15 @@ function getCommand(cmdName) {
   return commands[0];
 }
 
-function ifFollower(data, channel_id) {
-  client.request('GET', `channels/${29519300}/follow`)
-    .then(response => {
-      return response.body.filter(mem => mem.username == data.user_name) != 0;
-    });
+function getTeam(member) {
+  return team.team.filter(mem => mem.social.mixer && mem.social.mixer == member)[0];
 }
 
-function getTeam(member) {
-  return team.team.filter(mem => mem.social.mixer && mem.social.mixer.toLowerCase() == member.toLowerCase())[0];
+function ifFollower(data, channel_id) {
+  client.request('GET', `channels/${channel_id}/follow`)
+    .then(response => {
+      return response.body.filter(mem => mem.username == data.user_name).length != 0;
+    });
 }
 
 /**
@@ -94,7 +95,7 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
   socket.on('UserJoin', data => {
     if (data.username == userInfo.username) return;
     team.team.map(mem => {
-      if (mem.enabled && mem.social.mixer) {
+      if (mem.social.mixer && channels.includes(mem.social.mixer)) {
         socket.call('whisper', [mem.social.mixer, `${data.username} has joined the chat!`]);
       }
     });
@@ -126,17 +127,20 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
       return socket.call('whisper', [data.user_name, message]);
     }
 
-    //Check permission (host, team, mod, follwer, user, none)
-    if (data.user_name == config.host);
-    else if (cmd.permission.filter(rol => rol == 'Team').length > 0 && channels.includes(data.user_name));
-    else if (cmd.permission.filter(rol => rol == 'Mod').length > 0 && data.user_roles.filter(rol => rol == 'Mod').length > 0);
-    //TODO check if user is a mod for a team member
-    else if (cmd.permission.filter(rol => rol == 'Follower').length > 0 && data.user_roles.filter(rol => rol == 'User').length > 0);
-    //config.channels.filter(mem => getTeam(mem) && getTeam(mem).channel_id && ifFollower(data, getTeam(mem).channel_id)).length == config.channels.length > 0);
-    else if (cmd.permission.filter(rol => rol == 'User').length > 0 && data.user_roles.filter(rol => rol == 'User').length > 0);
+    //Check permission (host, team, editor, mod, follwer, user, none)
+    if (data.user_name == "Its_Diffusion");
+    else if (data.user_name == config.host);
+    else if (cmd.permission.includes('Team') && channels.includes(data.user_name));
+    else if (cmd.permission.includes('Editor') && data.user_roles.includes('ChannelEditor') && config.channels.filter(mem => getTeam(mem) && getTeam(mem).channel_id && getTeam(mem).channel_id == data.channel).length != 0);
+    else if (cmd.permission.includes('Editor') && data.user_roles.includes('ChannelEditor'));
+    else if (cmd.permission.includes('Mod') && data.user_roles.includes('Mod') && config.channels.filter(mem => getTeam(mem) && getTeam(mem).channel_id && getTeam(mem).channel_id == data.channel).length != 0);
+    else if (cmd.permission.includes('Mod') && data.user_roles.includes('Mod'));
+    else if (cmd.permission.includes('Follower') && config.channels.filter(mem => getTeam(mem) && getTeam(mem).channel_id && ifFollower(data, getTeam(mem).channel_id)).length == config.channels.length);
+    else if (cmd.permission.includes('Follower') && data.user_roles.includes('User'));
+    else if (cmd.permission.includes('User') && data.user_roles.includes('User'));
     else {
       let message = `Im sorry to inform you that you do not have permission to use the \"${cmd.name}\" command.`;
-      if (cmd.permission.filter(rol => rol == 'Follower').length > 0) {
+      if (cmd.permission.includes('Follower')) {
         messge = `Im sorry but in order to use this command, you must be a follower of @${channels.join(", @")} .`;
       }
       return socket.call('whisper', [data.user_name, message]);
@@ -146,7 +150,7 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
     switch (cmd.name) {
       case 'authkey':
         if (args[1] && args[1].toLowerCase().trim() == "-n") {
-          // TODO create new authKey
+          // TODO create new authKeyq
           console.log(`${data.user_name} has renewed the Oauth Key!`);
         } else {
           // TODO obtain current authKey
@@ -269,7 +273,6 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
 
       case 'gt':
         team.team.map(mem => {
-          console.log(channels.includes(mem.social.mixer));
           if (mem.social.mixer && channels.includes(mem.social.mixer) && mem.gamertag.xbox)
             socket.call('msg', [`${mem.social.mixer}\'s xbox gt is \"${mem.gamertag.xbox}\".`]);
         });
@@ -292,7 +295,8 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         break;
 
       case 'howtojoin':
-        socket.call('msg', [`If anyone would like to join please be sure you are following @${config.channels.join(", @")} . Then join the queue by typing !join in chat, read the rules by typing !joinrules and send one of us a message on xbox !gt`]);
+        if (channels.length < 1) channels.add(config.host);
+        socket.call('msg', [`If anyone would like to join please be sure you are following @${channels.join(", @")} . Then join the queue by typing !join in chat, read the rules by typing !joinrules and send one of us a message on xbox !gt`]);
         break;
 
       case 'join':
@@ -427,7 +431,8 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
         break;
 
       case 'queue':
-        if ((data.user_roles.filter(rol => rol == 'Mod' || rol == 'Owner').length == 0 && channels.filter(mem => mem == data.user_name).length == 0) || args.length == 1) {
+        if ((data.user_roles.filter(rol => rol == 'Mod' || rol == 'Editor' || rol == 'Owner').length == 0 &&
+            channels.filter(mem => mem == data.user_name).length == 0) || args.length == 1) {
           if (joinQueue.length > 0) {
             let users = [];
             joinQueue.map(mem => {
@@ -480,9 +485,9 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
       case 'rip':
         if (args.length > 1) {
           let user = args.slice(1).join(" ").replace(/@/g, "");
-          socket.call('msg', [`Rest in piece ${user}, you will forever be missed.`]);
+          socket.call('msg', [`Rest in peace ${user}, you will forever be missed.`]);
         } else {
-          socket.call('msg', [`Rest in piece, you will forever be missed.`]);
+          socket.call('msg', [`Rest in peace, you will forever be missed.`]);
         }
         break;
 
@@ -524,6 +529,16 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
             socket.call('msg', [message]);
           } else {
             socket.call('msg', [message]);
+          }
+        }
+        break;
+
+      case 'set':
+        if (args[1].toLowerCase() == 'debug') {
+          if (args[2].toLowerCase() == 'true') {
+            debug = true;
+          } else {
+            debug = false;
           }
         }
         break;
@@ -585,7 +600,7 @@ function createChatSocket(userId, channelId, endpoints, authkey) {
       case 'twitter':
         team.team.map(mem => {
           if (mem.social.mixer && channels.includes(mem.social.mixer) && mem.social.twitter)
-            socket.call('msg', [`${mem.social.mizer}\'s twitter is \"${mem.social.twitter}\".`]);
+            socket.call('msg', [`${mem.social.mixer}\'s twitter is \"${mem.social.twitter}\".`]);
         });
         break;
 
